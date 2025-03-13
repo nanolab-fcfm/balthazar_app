@@ -2,8 +2,12 @@ from laser_setup.config import config, instantiate
 from laser_setup.display.app import display_window
 from laser_setup.parser import experiment_list
 
+import balthazar as blt
+
 
 def main():
+    while (debug_input := input(">>> ")) != "q":
+        print(eval(input))
     while (procedure := input("Procedure: ")) not in experiment_list:
         print(f"Invalid procedure: {procedure}. Available: {experiment_list}")
 
