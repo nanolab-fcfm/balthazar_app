@@ -5,7 +5,7 @@ from laser_setup.parser import experiment_list
 
 def main():
     while (procedure := input("Procedure: ")) not in experiment_list:
-        print(f"Invalid procedure: {procedure}")
+        print(f"Invalid procedure: {procedure}. Available: {experiment_list}")
 
     idx = experiment_list.index(procedure)
     display_window(instantiate(
