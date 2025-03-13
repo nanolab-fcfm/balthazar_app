@@ -1,11 +1,35 @@
-import os
 import logging
+from pathlib import Path
+
 import pyvisa
 
+from ..config import config, save_yaml
 from ..instruments import TENMA, Keithley2450
-from .. import config, config_path
 
 log = logging.getLogger(__name__)
+
+
+def list_resources():
+    """
+    Prints the available resources, and returns a list of VISA resource names
+    """
+    rm = pyvisa.ResourceManager()
+    instrs = rm.list_resources()
+    for n, instr in enumerate(instrs):
+        try:
+            res = rm.open_resource(instr)
+            try:
+                idn = res.query('*IDN?')[:-1]
+            except pyvisa.Error:
+                idn = "Unknown"
+            finally:
+                res.close()
+                print(n, ":", instr, ":", idn)
+        except pyvisa.VisaIOError as e:
+            print(n, ":", instr, ":", "Visa IO Error: check connections")
+            print(e)
+    rm.close()
+    return instrs
 
 
 def keithley_exists(adapter):
@@ -14,8 +38,9 @@ def keithley_exists(adapter):
         log.info(f"Keithley 2450 found at {adapter}")
         K.beep(3*440, 0.5)
         return True
-    except:
-        log.warning(f"Keithley 2450 not found at {adapter}")
+
+    except Exception as e:
+        log.warning(f"Keithley 2450 not found at {adapter}: {e}")
         return False
 
 
@@ -24,8 +49,9 @@ def tenma_ping(adapter, tenmas: list, parent=None):
     try:
         T = TENMA(adapter)
         T.apply_voltage(0.01)
-    except:
-        log.warning(f"Adapter {adapter} not found")
+
+    except Exception as e:
+        log.warning(f"Adapter {adapter} not found: {e}")
         return
 
     which_tenma = ''
@@ -44,15 +70,16 @@ def tenma_ping(adapter, tenmas: list, parent=None):
 
 
 def setup(parent=None):
-    if not os.path.isdir(os.path.dirname(config_path)):
-        log.warning(f"Config directory not found. Creating directory {os.path.abspath(os.path.dirname(config_path))}")
-        os.makedirs(os.path.dirname(config_path))
+    save_path = Path(config._session['save_path'])
+    save_path.parent.mkdir(parents=True, exist_ok=True)
 
     rm = pyvisa.ResourceManager()
     devices = rm.list_resources()
 
     is_keithley = False
-    if 'keithley2450' not in config['Adapters'] or not keithley_exists(config['Adapters']['keithley2450']):
+    if 'keithley2450' not in config['Adapters'] or not keithley_exists(
+        config['Adapters']['keithley2450']
+    ):
         for dev in devices:
             if 'USB0::0x05E6::0x2450' in dev and keithley_exists(dev):
                 config['Adapters']['keithley2450'] = dev
@@ -60,7 +87,9 @@ def setup(parent=None):
                 break
 
         if not is_keithley:
-            log.error("Keithley 2450 not found on any USB port. Connect the instrument and try again.")
+            log.error(
+                "Keithley 2450 not found on any USB port. Connect the instrument and try again."
+            )
 
     else:
         is_keithley = True
@@ -80,18 +109,21 @@ def setup(parent=None):
     if found_tenmas:
         for tenma in tenmas:
             if tenma not in found_tenmas and tenma != 'None':
-                log.warning(f'TENMA {tenma} is configured, but was not found. Setting as empty str to avoid duplicates.')
+                log.warning(
+                    f'TENMA {tenma} is configured, but was not found. '
+                    'Setting as empty str to avoid duplicates.'
+                )
                 config['Adapters'][tenma] = ''
 
     else:
         log.error("No TENMA found on any serial port. Connect the instrument(s) and try again.")
 
-    with open(config_path, 'w') as f:
-        config.write(f)
-    log.info(f'New Adapter configuration saved to {config_path}')
+    save_yaml(config, save_path)
+    log.info(f'New Adapter configuration saved to {save_path}')
 
 
 def main():
+    """Set up Adapters"""
     setup(parent=None)
 
 

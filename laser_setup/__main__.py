@@ -1,30 +1,29 @@
-import argparse
-
-from .display import MainWindow, ExperimentWindow, display_window
-from .cli import Scripts, script_list
-from .procedures import Experiments, experiment_list
+from .config import config, instantiate
+from .display.app import display_window
+from .parser import experiment_list, parser, script_list
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Laser Setup')
-    parser.add_argument('procedure', nargs='?', help='Procedure to run', choices=experiment_list + script_list)
-    parser.add_argument('-d', '--debug', action='store_true', default=False, help='Enable debug mode')
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
+    config._session['args'] = vars(args)
 
     if args.procedure is None:
-        display_window(MainWindow)
+        display_window()
 
     elif args.procedure in experiment_list:
         idx = experiment_list.index(args.procedure)
-        display_window(
-            ExperimentWindow, Experiments[idx][0], title=Experiments[idx][1]
-        )
+        display_window(instantiate(
+            config.Qt.MainWindow.procedures[idx].target, level=1
+        ))
 
     elif args.procedure in script_list:
         idx = script_list.index(args.procedure)
-        Scripts[idx][0]()
+        func = instantiate(config.Qt.MainWindow.scripts[idx].target, level=1)
+        if callable(func):
+            func()
 
     else:
+        # This should never happen
         raise ValueError(f"Invalid argument: {args.procedure}")
 
 

@@ -1,104 +1,48 @@
 """Module for setting up the parameters for the laser setup.
 Parameters should be defined here and imported in the procedures.
 """
-import copy
-import time
-import configparser
+from copy import deepcopy
 
-from pymeasure.experiment import IntegerParameter, Parameter, BooleanParameter, ListParameter, FloatParameter, Metadata
+from omegaconf import DictConfig
 
-from . import config
-
-overrides = configparser.ConfigParser()
-overrides.read(config.get('Procedures', 'parameter_file'))
+from .config import config, load_yaml
+from .config.parameters import ParameterCatalog
 
 
-class ParameterProvider:
-    """Base class for Parameters objects. When a parameter is
-    accessed, a copy of the parameter is returned to avoid
-    modifying the original parameter.
+class DeepCopyDictConfig(DictConfig):
+    """Deepcopy of the DictConfig class. It allows to deepcopy the
+    parameters when they are accessed.
     """
-    def __getattribute__(self, name):
-        # Use super to get the attribute
-        attr = super().__getattribute__(name)
+    def __getitem__(self, key):
+        item = super().__getitem__(key)
+        return deepcopy(item)
 
-        # Check if the attribute is a Parameter or Metadata instance
-        if isinstance(attr, (Parameter, Metadata)):
-            return copy.deepcopy(attr)
-
-        return attr
+    def __getattr__(self, key):
+        item = super().__getattr__(key)
+        return deepcopy(item)
 
 
-class BaseParameters(ParameterProvider):
-    # Procedure version. When modified, increment
-    # <parameter name>.<parameter property>.<procedure startup/shutdown>
-    procedure_version = Parameter('Procedure version', default='1.5.0')
-    show_more = BooleanParameter('Show more', default=False)
-    info = Parameter('Information', default='None')
+class ParametersMeta(type):
+    """Metaclass for Parameters. It is used to set attributes
+    and the default `Parameters` sections in the class definition.
+    """
+    def __new__(cls: type, name: str, bases: tuple, dct: dict):
+        for key, value in dct['_dict'].items():
+            if key.startswith('_'):
+                continue
 
-    # Chained Execution
-    chained_exec = BooleanParameter('Chained execution', default=False)
+            dct[key] = DeepCopyDictConfig(value)
 
-    # Metadata
-    start_time = Metadata('Start time', fget=time.time)
-
-
-class ChipParameters(ParameterProvider):
-    chip_names = list(eval(config['Chip']['names'])) + ['other']
-    samples = list(eval(config['Chip']['samples'])) + ['other']
-
-    chip_group = ListParameter('Chip group name', choices=chip_names, default='other')
-    chip_number = IntegerParameter('Chip number', default=1, minimum=1)
-    sample = ListParameter('Sample', choices=samples, default='other')
+        return super().__new__(cls, name, bases, dct)
 
 
-class LaserParameters(ParameterProvider):
-    wavelengths = list(eval(config['Laser']['wavelengths']))
-    fibers = list(eval(config['Laser']['fibers']))
-
-    laser_toggle = BooleanParameter('Laser toggle', default=False)
-    laser_wl = ListParameter('Laser wavelength', units='nm', choices=wavelengths)
-    laser_v = FloatParameter('Laser voltage', units='V', default=0.)
-    laser_T = FloatParameter('Laser ON+OFF period', units='s', default=120.)
-    burn_in_t = FloatParameter('Burn-in time', units='s', default=60.)
-
-    fiber = ListParameter('Optical fiber', choices=fibers)
-
-
-class InstrumentParameters(ParameterProvider):
-    N_avg = IntegerParameter('N_avg', default=2, group_by='show_more')  # deprecated
-    Irange = FloatParameter('Irange', units='A', default=0.001, minimum=0, maximum=0.105, group_by='show_more')
-    NPLC = FloatParameter('NPLC', default=1.0, minimum=0.01, maximum=10, group_by='show_more')
-
-    sensor = Metadata('Sensor model', fget='power_meter.sensor_name')
-
-
-class ControlParameters(ParameterProvider):
-    sampling_t = FloatParameter('Sampling time (excluding Keithley)', units='s', default=0., group_by='show_more')
-    vds = FloatParameter('VDS', units='V', default=0.075, decimals=10)
-    vg = FloatParameter('VG', units='V', default=0., minimum=-100., maximum=100.)
-    vg_dynamic = Parameter('VG', default='DP + 0. V')
-
-    # Voltage ramps
-    step_time = FloatParameter('Step time', units='s', default=0.01, group_by='show_more')
-
-    vg_start = FloatParameter('VG start', units='V', default=-35.)
-    vg_end = FloatParameter('VG end', units='V', default=35.)
-    vg_step = FloatParameter('VG step', units='V', default=0.2, group_by='show_more')
-
-    vsd_start = FloatParameter('VSD start', units='V', default=-1.)
-    vsd_end = FloatParameter('VSD end', units='V', default=1.)
-    vsd_step = FloatParameter('VSD step', units='V', default=0.01, group_by='show_more')
-
-    vl_start = FloatParameter('Laser voltage start', units='V', default=0.)
-    vl_end = FloatParameter('Laser voltage end', units='V', default=5.)
-    vl_step = FloatParameter('Laser voltage step', units='V', default=0.1)
-
-
-class Parameters:
-    """Class to define all the parameters for the laser setup."""
-    Base = BaseParameters()
-    Chip = ChipParameters()
-    Laser = LaserParameters()
-    Instrument = InstrumentParameters()
-    Control = ControlParameters()
+class Parameters(ParameterCatalog, metaclass=ParametersMeta):
+    """Parameter catalog. Returns a deepcopy of the parameter when accessed.
+    """
+    # There's probably a better way to do this, but at least it works.
+    _dict = load_yaml(
+        config.Dir.parameters_file,
+        ParameterCatalog,
+        flags={'allow_objects': True},
+        _instantiate=True
+    )

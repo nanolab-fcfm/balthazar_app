@@ -1,0 +1,112 @@
+It:
+  update_parameters:
+    procedure_version:
+      value: 2.1.0
+    laser_T:
+      value: 120.
+    vg:
+      value: DP + 0. V
+
+IVg:
+  update_parameters:
+    procedure_version:
+      value: 2.0.0
+    laser_wl:
+      group_by: &laser_toggle {laser_toggle: true}
+    laser_v:
+      group_by: *laser_toggle
+    burn_in_t:
+      group_by: *laser_toggle
+
+Vt:
+  update_parameters:
+    procedure_version:
+      value: 1.0.0
+    laser_wl:
+      group_by: *laser_toggle
+    laser_v:
+      group_by: *laser_toggle
+    burn_in_t:
+      group_by: *laser_toggle
+
+IV:
+  update_parameters:
+    procedure_version:
+      value: 2.0.0
+    laser_wl:
+      group_by: *laser_toggle
+    laser_v:
+      group_by: *laser_toggle
+    burn_in_t:
+      group_by: *laser_toggle
+      value: 600
+
+ItWl:
+  update_parameters:
+    procedure_version:
+      value: 1.0.0
+    wl:
+      value: 530.
+    step_time:
+      value: 60
+    burn_in_t:
+      value: 60
+
+Pt:
+  update_parameters:
+    procedure_version:
+      value: 0.1.1
+    laser_T:
+      value: 20.
+
+
+Pwl:
+  update_parameters:
+    procedure_version:
+      value: 1.2.0
+
+
+ItVg:
+  update_parameters:
+    laser_wl:
+      group_by: *laser_toggle
+    laser_v:
+      group_by: *laser_toggle
+    burn_in_t:
+      group_by: *laser_toggle
+      value: 600
+    vg_start:
+      value: 0.
+    vg_end:
+      value: 15.
+    vg_step:
+      value: 0.
+    step_time:
+      group_by: {}
+      value: 1800
+
+Tt:
+  update_parameters:
+    procedure_version:
+      value: 2.0.0
+    sampling_t:
+      value: 0.15
+    step_time:
+      group_by: {}
+      value: 1800
+
+LaserCalibration:
+  update_parameters:
+    procedure_version:
+      value: 1.1.1
+    step_time:
+      value: 2.
+
+FakeIVg:
+  update_parameters:
+    laser_wl:
+      group_by: *laser_toggle
+    laser_v:
+      group_by: *laser_toggle
+    burn_in_t:
+      group_by: *laser_toggle

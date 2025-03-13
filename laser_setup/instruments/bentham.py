@@ -15,6 +15,14 @@ class Bentham(Instrument):
     """
     wavelength_range = [280., 1100.]
 
+    mono = Instrument.control(
+        ":MONO?", ":MONO %.1f",
+        """Sets the monochromator to the specified wavelength. Gets the current
+        and target wavelengths in nm.""",
+        validator=truncated_range,
+        values=wavelength_range,
+    )
+
     goto = Instrument.control(
         ":MONO:GOTO?", ":MONO:GOTO? %.1f",
         """Sets new targets for all components of the monochromator and if
@@ -107,7 +115,7 @@ class Bentham(Instrument):
 
         if isinstance(adapter, str) or adapter is None:
             try:
-                self.adapter = bendev.Device(adapter)
+                self.adapter = bendev.Device(serial_number=adapter)
 
             except bendev.exceptions.ExternalDeviceNotFound:
                 if adapter is not None:
@@ -116,21 +124,25 @@ class Bentham(Instrument):
 
     def set_wavelength(self, wavelength: float, timeout: float = 10.):
         """Sets the wavelength to the specified value."""
-        self.write(":MONO:FILT 1")
+        self.mono = wavelength
         self.move
-        self.wavelength = wavelength
         self.filt = wavelength
         self.move
 
     def read(self, timeout: float = 0, read_interval: float = 0.05) -> str:
-            return self.adapter.read(timeout, read_interval)
+        return self.adapter.read(timeout, read_interval)
 
     def query(self, command, timeout: float = 0, read_interval: float = 0.05) -> str:
         return self.adapter.query(command, timeout, read_interval)
 
     def shutdown(self):
+        self.lamp = False
+        self.reboot()
         self.adapter.close()
         super().shutdown()
+
+    def reboot(self):
+        self.adapter.write("SYSTEM:REBOOT")
 
     def reconnect(self):
         self.adapter.reconnect()

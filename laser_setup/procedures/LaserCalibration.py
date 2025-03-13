@@ -1,10 +1,10 @@
-import time
 import logging
+import time
 
 import numpy as np
 
 from .. import config
-from ..instruments import TENMA, ThorlabsPM100USB, PendingInstrument
+from ..instruments import TENMA, InstrumentManager, ThorlabsPM100USB
 from ..parameters import Parameters
 from .BaseProcedure import BaseProcedure
 
@@ -15,20 +15,22 @@ class LaserCalibration(BaseProcedure):
     """Uses the Power Meter to calculate the effective power of the laser
     at a given voltage.
     """
+    name = 'Laser Calibration'
+
     show_more = None
     info = None
 
-    power_meter: ThorlabsPM100USB = PendingInstrument(ThorlabsPM100USB, config['Adapters']['power_meter'])
-    tenma_laser: TENMA = PendingInstrument(TENMA, config['Adapters']['tenma_laser'])
-
-    procedure_version = Parameters.Base.procedure_version; procedure_version.value = '1.1.1'
+    instruments = InstrumentManager()
+    power_meter = instruments.queue(ThorlabsPM100USB, config['Adapters']['power_meter'])
+    tenma_laser = instruments.queue(TENMA, config['Adapters']['tenma_laser'])
 
     laser_wl = Parameters.Laser.laser_wl
     fiber = Parameters.Laser.fiber
     vl_start = Parameters.Control.vl_start
     vl_end = Parameters.Control.vl_end
     vl_step = Parameters.Control.vl_step
-    step_time = Parameters.Control.step_time; step_time.value = 2.
+    # beam_area = algo
+    step_time = Parameters.Control.step_time
     N_avg = Parameters.Instrument.N_avg
 
     # Metadata
@@ -40,17 +42,11 @@ class LaserCalibration(BaseProcedure):
     def startup(self):
         self.connect_instruments()
 
-        if self.chained_exec and self.__class__.startup_executed:
-            log.info("Skipping startup")
-            return
-
         self.tenma_laser.apply_voltage(0.)
         self.tenma_laser.output = True
         time.sleep(1.)
 
         self.power_meter.wavelength = self.laser_wl
-
-        self.__class__.startup_executed = True
 
     def execute(self):
         log.info("Starting the measurement")
