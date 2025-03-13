@@ -8,7 +8,7 @@ import balthazar as blt
 
 
 def main():
-    config._session.args.debug = True
+    config._session["args"] = {"debug": True}
     while (procedure := input("Procedure: ")) not in experiment_list:
         print(f"Invalid procedure: {procedure}. Available: {experiment_list}")
 
