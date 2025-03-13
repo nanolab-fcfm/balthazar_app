@@ -9,9 +9,8 @@ import balthazar as blt
 
 def main():
     config._session["args"] = {"debug": True}
-    while (procedure := input("Procedure: ")) not in experiment_list:
-        print(f"Invalid procedure: {procedure}. Available: {experiment_list}")
 
+    procedure = blt.params["Procedure type"]
     idx = experiment_list.index(procedure)
     display_window(instantiate(
         config.Qt.MainWindow.procedures[idx].target, level=1
