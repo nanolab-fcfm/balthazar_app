@@ -7,7 +7,7 @@ import balthazar as blt
 
 def main():
     while (debug_input := input(">>> ")) != "q":
-        print(eval(input))
+        print(eval(debug_input))
     while (procedure := input("Procedure: ")) not in experiment_list:
         print(f"Invalid procedure: {procedure}. Available: {experiment_list}")
 
