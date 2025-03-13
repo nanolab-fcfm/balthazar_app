@@ -1,6 +1,6 @@
-from .config import config, instantiate
-from .display.app import display_window
-from .parser import experiment_list
+from laser_setup.config import config, instantiate
+from laser_setup.display.app import display_window
+from laser_setup.parser import experiment_list
 
 
 def main():
